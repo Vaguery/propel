@@ -5,7 +5,7 @@
     ))
 
 
-;; TO DO
+;; TODO
 ;; - bring tournament-size into specification of tournament selection directly (like :parent-selection (tournament 5))
 
 
@@ -93,26 +93,15 @@
                  (rest stacks)
                  (conj args (peek-stack state stack))))))))
 
-(defn single-result-push-instruction
+(defn build-push-instruction
   "A utility function for making Push instructions. Takes a state, the function
-  to apply to the args, the stacks to take the args from, and the stack to return the result to. Applies the function to the args (taken from the stacks) and pushes the return value onto return-stack."
+  to apply to the args, the stacks to take the args from, and the stack to return the result(s) to. Applies the function to the args (in the order taken from the stacks) and produces a list of results, all of which are pushed (in the order they appear in that result seq) onto the return stack. If the result is not a seq, but is instead any other thing, it is wrapped in a seq automatically. In future, a vector will be considered a single result."
   [state function arg-stacks return-stack]
   (let [args-pop-result (get-args-from-stacks state arg-stacks)]
     (if (= args-pop-result :not-enough-args)
       state
       (let [result (apply function (:args args-pop-result))
-            new-state (:state args-pop-result)]
-        (push-to-stack new-state return-stack result)
-        ))))
-
-(defn multi-result-push-instruction
-  "A utility function for making Push instructions. Takes a state, the function
-  to apply to the args, the stacks to take the args from, and the stack to return the result(s) to. Applies the function to the args (in the order taken from the stacks) and produces a list of results, all of which are pushed (in order) onto the return stack."
-  [state function arg-stacks return-stack]
-  (let [args-pop-result (get-args-from-stacks state arg-stacks)]
-    (if (= args-pop-result :not-enough-args)
-      state
-      (let [result-seq (apply function (:args args-pop-result))
+            result-seq (if (seq? result) result (list result))
             new-state (:state args-pop-result)]
         (if (seq? result-seq)
           (update new-state return-stack into (reverse result-seq))
@@ -129,22 +118,22 @@
 
 (defn integer_+
   [state]
-  (single-result-push-instruction
+  (build-push-instruction
     state #?@(:clj [+'] :cljs [+]) [:integer :integer] :integer))
 
 (defn integer_-
   [state]
-  (single-result-push-instruction
+  (build-push-instruction
     state #?@(:clj [-'] :cljs [-]) [:integer :integer] :integer))
 
 (defn integer_*
   [state]
-  (single-result-push-instruction
+  (build-push-instruction
     state #?@(:clj [*'] :cljs [*]) [:integer :integer] :integer))
 
 (defn integer_%
   [state]
-  (single-result-push-instruction state
+  (build-push-instruction state
                          (fn [int1 int2]
                            (if (zero? int2)
                              1
@@ -154,110 +143,110 @@
 
 (defn integer_=
   [state]
-  (single-result-push-instruction state = [:integer :integer] :boolean))
+  (build-push-instruction state = [:integer :integer] :boolean))
 
 (defn integer_dup
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list % %) [:integer] :integer))
 
 (defn integer_swap
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list %1 %2) [:integer :integer] :integer))
 
 (defn exec_dup
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list % %) [:exec] :exec))
 
 (defn exec_swap
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list %1 %2) [:exec :exec] :exec))
 
 (defn exec_if
   [state]
-  (single-result-push-instruction state
+  (build-push-instruction state
                          #(if %1 %3 %2)
                          [:boolean :exec :exec]
                          :exec))
 
 (defn boolean_and
   [state]
-  (single-result-push-instruction state #(and %1 %2) [:boolean :boolean] :boolean))
+  (build-push-instruction state #(and %1 %2) [:boolean :boolean] :boolean))
 
 (defn boolean_or
   [state]
-  (single-result-push-instruction state #(or %1 %2) [:boolean :boolean] :boolean))
+  (build-push-instruction state #(or %1 %2) [:boolean :boolean] :boolean))
 
 (defn boolean_not
   [state]
-  (single-result-push-instruction state not [:boolean] :boolean))
+  (build-push-instruction state not [:boolean] :boolean))
 
 (defn boolean_=
   [state]
-  (single-result-push-instruction state = [:boolean :boolean] :boolean))
+  (build-push-instruction state = [:boolean :boolean] :boolean))
 
 (defn boolean_dup
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list % %) [:boolean] :boolean))
 
 (defn boolean_swap
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list %1 %2) [:boolean :boolean] :boolean))
 
 (defn string_=
   [state]
-  (single-result-push-instruction state = [:string :string] :boolean))
+  (build-push-instruction state = [:string :string] :boolean))
 
 (defn string_dup
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list % %) [:string] :string))
 
 (defn string_swap
   [state]
-  (multi-result-push-instruction
+  (build-push-instruction
     state #(list %1 %2) [:string :string] :string))
 
 (defn string_take
   [state]
-  (single-result-push-instruction state
+  (build-push-instruction state
                          #(apply str (take %1 %2))
                          [:integer :string]
                          :string))
 
 (defn string_drop
   [state]
-  (single-result-push-instruction state
+  (build-push-instruction state
                          #(apply str (drop %1 %2))
                          [:integer :string]
                          :string))
 
 (defn string_reverse
   [state]
-  (single-result-push-instruction state
+  (build-push-instruction state
                          #(apply str (reverse %))
                          [:string]
                          :string))
 
 (defn string_concat
   [state]
-  (single-result-push-instruction state
+  (build-push-instruction state
                          #(apply str (concat %1 %2))
                          [:string :string]
                          :string))
 
 (defn string_length
   [state]
-  (single-result-push-instruction state count [:string] :integer))
+  (build-push-instruction state count [:string] :integer))
 
 (defn string_includes?
   [state]
-  (single-result-push-instruction state clojure.string/includes? [:string :string] :boolean))
+  (build-push-instruction state clojure.string/includes? [:string :string] :boolean))
 
 
 (def push-instruction-registry

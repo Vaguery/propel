@@ -147,7 +147,7 @@
   (single-result-push-instruction state
                          (fn [int1 int2]
                            (if (zero? int2)
-                             int1
+                             1
                              (quot int1 int2)))
                          [:integer :integer]
                          :integer))

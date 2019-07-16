@@ -65,7 +65,7 @@
       (= '(11 999)
       (:integer (integer_% (load-state {:integer '(9 99 999)})))))
     (is
-      (= '(99 999) ;; % returns numerator when dividing by zero
+      (= '(1 999) ;; % returns 1 when dividing by zero
       (:integer (integer_% (load-state {:integer '(0 99 999)})))))
     (is
       (= '(0 999) ;; checks arg order
